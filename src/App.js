@@ -1,57 +1,63 @@
-import React, { useState, useEffect } from 'react'
-import './App.css'
-import placeholderImg from './placeholder.png'
+import React, { useState } from 'react'
 import { ReactComponent as ChevronLeft } from './chevron-left.svg'
 import { ReactComponent as ChevronRight } from './chevron-right.svg'
+import useFetch from './hooks/useFetch'
+import List from './components/List'
+import Search from './components/Search'
+import { url } from './constants'
+import './App.css'
+
+function isLastPage(page, totalResults) {
+  return page <= totalResults / 10 ? true : false
+}
+
+function isFirstPage(page) {
+  return page > 1 ? true : false
+}
 
 function App() {
-  const [searchResult, setSearchResult] = useState()
+  const [searchResult, setSearchResult] = useState('king')
+  const [page, setPage] = useState(1)
+  const {
+    data: movies,
+    error,
+    loading,
+    totalResults,
+  } = useFetch({ url, searchTerm: searchResult, page })
 
-  useEffect(() => {
-    const search = async () => {
-      const response = await fetch(
-        'http://www.omdbapi.com/?apikey=a461e386&s=king',
-      )
+  function handleClickSearchTerm(term) {
+    setPage(1)
+    setSearchResult(term)
+  }
 
-      const data = await response.json()
-
-      if (!searchResult) {
-        setSearchResult(data)
-      }
+  function handlePreviousClick() {
+    if (page > 1) {
+      setPage(page - 1)
     }
+  }
 
-    search()
-  })
+  function handleNextPage() {
+    if (isLastPage(page, totalResults)) {
+      setPage(page + 1)
+    }
+  }
 
   return (
     <div className="App">
-      <div className="search">
-        <input type="text" placeholder="Search..." />
-        <button>Search</button>
-      </div>
-      {!searchResult ? (
-        <p>No results yet</p>
-      ) : (
+      <Search onClickSearchTerm={handleClickSearchTerm} />
+
+      {error && <p>Error!</p>}
+      {loading && <p>Loading...</p>}
+      {!error && !loading && (
         <div className="search-results">
           <div className="chevron">
-            <ChevronLeft />
+            {isFirstPage(page) && <ChevronLeft onClick={handlePreviousClick} />}
           </div>
-          <div className="search-results-list">
-            {searchResult.Search.map(result => (
-              <div key={result.imdbID} className="search-item">
-                <img
-                  src={result.Poster === 'N/A' ? placeholderImg : result.Poster}
-                  alt="poster"
-                />
-                <div className="search-item-data">
-                  <div className="title">{result.Title}</div>
-                  <div className="meta">{`${result.Type} | ${result.Year}`}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <List items={movies} />
           <div className="chevron">
-            <ChevronRight />
+            {isLastPage(page, totalResults) && (
+              <ChevronRight onClick={handleNextPage} />
+            )}
           </div>
         </div>
       )}
